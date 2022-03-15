@@ -53,6 +53,535 @@
 
 ## ➕ C/C++
 
+### 现代C++
+
+#### C++11
+
+##### 智能指针
+
+###### `std::shared_ptr`
+
+使用了引用计数，每一个shared_ptr的拷贝都指向相同的内存，每次拷贝都会触发引用计数+1，每次生命周期结束析构的时候引用计数-1，在最后一个shared_ptr析构的时候，内存才会释放。
+
+注意：
+
+- 不要用一个裸指针初始化多个 `shared_ptr` ，会出现double_free导致程序崩溃
+- 通过 `shared_from_this()` 返回`this` 指针，不要把`this` 指针作为 `shared_ptr` 返回出来
+- 不要delete get()返回来的裸指针。
+- 不是new出来的空间要自定义删除器
+- 避免循环引用
+
+###### `std::weak_ptr`
+
+// todo
+
+###### `std::unique_ptr`
+
+使用方法和shared_ptr类似，区别是不可以拷贝
+
+`make_unique<>()` 在C++11没有，C++14才有
+
+##### auto decltype
+
+###### auto
+
+忽略cv属性（const、volatile）和引用
+
+###### decltype
+
+保留表达式的引用和cv属性。`decltype((var))` 强制推导为引用
+
+```cpp
+// NO! in C++11
+template<typename T, typename U>
+decltype(t + u) add(T t, U u) { // t和u尚未定义
+    return t + u;
+}
+
+// YES!
+template<typename T, typename U>
+auto add(T t, U u) -> decltype(t + u) {
+    return t + u;
+}
+```
+
+
+
+##### 左右值、移动语义、完美转发forward、RVO返回值优化
+
+###### 左右值
+
+左值一般有：
+
+- 函数名和变量名
+- 返回左值引用的函数调用
+- 前置自增自减表达式++i、--i
+- 由赋值表达式或赋值运算符连接的表达式(a=b, a += b等)
+- 解引用表达式*p
+- 字符串字面值"abcd"
+
+纯右值
+
+- 除字符串字面值外的字面值
+- 返回非引用类型的函数调用
+- 后置自增自减表达式i++、i--
+- 算术表达式(a+b, a*b, a&&b, a==b等)
+- 取地址表达式等(&a)
+
+将亡值
+
+- 将要被移动的对象
+- T&&函数的返回值
+- std::move函数的返回值
+- 转换为T&&类型转换函数的返回值
+
+###### forward
+
+```cpp
+template <class T>
+T&& forward(typename tinySTL::remove_reference<T>::type& t) noexcept {
+    return static_cast<T&&>(t); // T& &&折叠为 T&
+}
+
+template <class T>
+T&& forward(typename tinySTL::remove_reference<T>::type&& t) noexcept {
+    return static_cast<T&&>(t); // T&& &&折叠为 T&&
+}
+```
+
+###### RVO返回值优化
+
+当函数需要返回一个对象实例时候，就会创建一个临时对象并通过复制构造函数将目标对象复制到临时对象，这里有复制构造函数和析构函数会被多余的调用到，有代价，而通过返回值优化，C++标准允许省略调用这些复制构造函数。
+
+什么时候编译器会进行返回值优化呢?
+
+- return的值类型与函数的返回值类型相同
+- return的是一个局部对象
+
+```cpp
+std::vector<int> return_vector(void)
+{
+    std::vector<int> tmp {1,2,3,4,5};
+    return tmp;
+}
+
+std::vector<int> rval_ref = return_vector();
+```
+
+`return std::move(w)` 返回的并不是一个局部对象，而是局部对象的右值引用，编译器无法进行RVO优化
+
+##### 列表初始化
+
+##### std::function 、 std::bind 、 lambda表达式
+
+###### bind
+
+将可调用对象和参数一起绑定，绑定后的结果使用 `std::function` 进行保存，并延迟调用到任何我们需要的时候。
+
+`std::bind` 通常有两大作用：
+
+- 将可调用对象与参数一起绑定为另一个 `std::function` 供调用
+- 将n元可调用对象转成m(m < n)元可调用对象，绑定一部分参数，这里需要使用 `std::placeholders`
+
+##### range-based for
+
+```cpp
+for(int i : vec){
+    //do something...
+}
+```
+
+##### nullptr
+
+```cpp
+void func(void *ptr) {
+    cout << "func ptr" << endl;
+}
+
+void func(int i) {
+    cout << "func i" << endl;
+}
+
+int main() {
+    func(NULL); // 编译失败，会产生二义性
+    func(nullptr); // 输出func ptr
+    return 0;
+}
+```
+
+##### 委托构造函数
+
+```cpp
+struct A {
+    A(){}
+    A(int a) { a_ = a; }
+
+    A(int a, int b) : A(a) { b_ = b; }
+
+    A(int a, int b, int c) : A(a, b) { c_ = c; }
+
+    int a_;
+    int b_;
+    int c_;
+};
+```
+
+##### 继承构造函数
+
+继承构造函数可以让派生类直接使用基类的构造函数，如果有一个派生类，我们希望派生类采用和基类一样的构造方式，可以直接使用基类的构造函数，而不是再重新写一遍构造函数
+
+```cpp
+struct Base {
+    Base() {}
+    Base(int a) { a_ = a; }
+
+    Base(int a, int b) : Base(a) { b_ = b; }
+
+    Base(int a, int b, int c) : Base(a, b) { c_ = c; }
+
+    int a_;
+    int b_;
+    int c_;
+};
+
+struct Derived : Base {
+    using Base::Base; // HERE!
+};
+
+int main() {
+    Derived a(1, 2, 3);
+    return 0;
+}
+```
+
+##### 对模板的改进
+
+###### 连续右尖括号
+
+```cpp
+std::vector<std::vector<int>> a; // error
+std::vector<std::vector<int> > b; // ok
+```
+
+###### 函数模板 默认模板参数
+
+C++11之前只有类模板支持默认模板参数，函数模板是不支持默认模板参数的，C++11后都支持。
+
+###### 变长参数模板
+
+```cpp
+template <typename T, typename ... Args>
+void func(const T& t, Args ... args){
+    cout << t << ',';
+    func(args...);
+}
+```
+
+##### final、override 关键字
+
+`final ` 用于修饰一个类，表示禁止该类进一步派生和虚函数的进一步重载。
+
+```cpp
+struct Base final {
+    virtual void func() {
+        cout << "base" << endl;
+    }
+};
+
+struct Derived : public Base{ // 编译失败，final修饰的类不可以被继承
+    void func() override {
+        cout << "derived" << endl;
+    }
+};
+```
+
+`override ` 用于修饰派生类中的成员函数，标明该函数重写了基类函数，如果一个函数声明了override但父类却没有这个虚函数，编译报错，使用override关键字可以避免开发者在重写基类函数时无意产生的错误。
+
+```cpp
+struct Base {
+    virtual void func() {
+        cout << "base" << endl;
+    }
+};
+
+struct Derived : public Base{
+    void func() override { // 确保func被重写
+        cout << "derived" << endl;
+    }
+
+    void fu() override { // error，基类没有fu()，不可以被重写
+    }
+};
+```
+
+##### =default
+
+多数时候用于声明构造函数为默认构造函数
+
+```cpp
+struct A {
+    int a;
+    A(int i) { a = i; }
+};
+
+int main() {
+    A a; // 编译出错
+    return 0;
+}
+//---------------------------------
+struct A {
+    A() = default;
+    int a;
+    A(int i) { a = i; }
+};
+
+int main() {
+    A a;
+    return 0;
+}
+```
+
+##### =delete
+
+c++中，如果没有定义特殊成员函数，那么编译器在需要特殊成员函数时候会隐式自动生成一个默认的特殊成员函数，例如拷贝构造函数或者拷贝赋值操作符。
+
+禁止对象的拷贝与赋值，可以使用`delete` 修饰
+
+`std::unique_ptr` 就是通过`delete` 修饰来禁止对象的拷贝的。
+
+##### explicit
+
+修饰构造函数，参数不能被隐式类型转换
+
+##### constexpr
+
+两者都代表可读，`const` 只保证了运行时不可被修改，但它修饰的仍然有可能是动态变量，而`constexpr` 修饰的才是真正的常量，它会在编译期间就会被计算出来，整个运行过程中都不可以被改变.
+
+`constexpr` 可以用于修饰函数，这个函数的返回值会尽可能在编译期间被计算出来当作一个常量，但是如果编译期间此函数不能被计算出来，那它就会当作一个普通函数被处理。
+
+##### enum class
+
+有作用域的枚举类型，可以选择底层类型，默认是int，可以改成char等。
+
+```cpp
+enum AColor {
+    kRed,
+    kGreen,
+    kBlue
+};
+
+enum BColor {
+    kWhite,
+    kBlack,
+    kYellow
+};
+
+int main() {
+    if (kRed == kWhite) { //！？
+        cout << "red == white" << endl;
+    }
+    return 0;
+}
+//-------------------------------------
+enum class AColor {
+    kRed,
+    kGreen,
+    kBlue
+};
+
+enum class BColor {
+    kWhite,
+    kBlack,
+    kYellow
+};
+
+int main() {
+    if (AColor::kRed == BColor::kWhite) { // 编译失败
+        cout << "red == white" << endl;
+    }
+    return 0;
+}
+```
+
+```cpp
+enum class AColor : char {
+    kRed,
+    kGreen,
+    kBlue
+};
+```
+
+##### 并发
+
+- `std::thread` 相关
+- `std::mutex` 相关
+- `std::lock` 相关
+- `std::atomic` 相关
+- `std::call_once` 相关
+- `volatile` 相关
+- `std::condition_variable` 相关
+- `std::future` 相关
+- `async` 相关
+
+##### sizeof 新用法
+
+```cpp
+struct A {
+    int data[10];
+    int a;
+};
+{
+    sizeof(A::data);//想知道类中数据成员的大小，在c++11中方便了许多
+}
+```
+
+##### static_assert
+
+```cpp
+static_assert(bool, message);
+```
+
+##### 新的库
+
+- `chrono`
+  - `duration`
+  - `time_point`
+  - 三种`clock`
+- `regex` 
+- 容器
+  - `array` 越界访问时抛出异常
+  - `tuple` 
+  - `unordered_set` `unordered_map`  hash表实现
+- `algorithm` 新增
+  - `any_of` `none_of` `find_if_not` `copy_if` `itoa` `minmax_element`  `is_sorted` `is_sorted_until`
+- `random` 新增
+  - 选择概率分布类型等
+
+##### 自定义字面量
+
+#### C++14
+
+##### auto 函数返回值类型推导
+
+```cpp
+auto func(int i) {
+    return i;
+}
+```
+
+- 函数内如果有多个return语句，它们必须返回相同的类型，否则编译失败。
+
+- 如果return语句返回初始化列表，返回值类型推导也会失败
+
+- 如果函数是虚函数，不能使用返回值类型推导
+
+- 返回类型推导可以用在前向声明中，但是在使用它们之前，翻译单元中必须能够得到函数定义
+  ```cpp
+  auto f();               // declared, not yet defined
+  auto f() { return 42; } // defined, return type is int
+  
+  int main() {
+      cout << f() << endl;
+  }
+  ```
+
+- 返回类型推导可以用在递归函数中，但是递归调用必须以至少一个返回语句作为先导，以便编译器推导出返回类型。
+  ```cpp
+  auto sum(int i) {
+      if (i == 1)
+          return i;              // return int
+      else
+          return sum(i - 1) + i; // ok
+  }
+  ```
+
+##### lambda 参数 auto
+
+```cpp
+auto f = [] (auto a) { return a; };
+```
+
+##### 变量模板
+
+```cpp
+template<class T>
+constexpr T pi = T(3.1415926535897932385L);
+```
+
+##### 模板别名
+
+```cpp
+template<typename T, typename U>
+struct A {
+    T t;
+    U u;
+};
+
+template<typename T>
+using B = A<T, int>;
+```
+
+##### constexpr的限制
+
+C++14相较于C++11对constexpr减少了一些限制：
+
+- C++11中constexpr函数可以使用递归，在C++14中可以使用局部变量和循环
+    ```cpp
+    constexpr int factorial(int n) { // C++11
+        return n <= 1 ? 1 : (n * factorial(n - 1));
+    }
+    
+    constexpr int factorial(int n) { // C++14
+        int ret = 0;
+        for (int i = 0; i < n; ++i) {
+            ret += i;
+        }
+        return ret;
+    }
+    ```
+    
+- C++11中constexpr函数必须必须把所有东西都放在一个单独的return语句中，而constexpr则无此限制
+    ```cpp
+    constexpr int func(bool flag) { // C++11
+        return 0;
+    }
+    
+    constexpr int func(bool flag) { // C++14
+        if (flag) return 1;
+        else return 0;
+    }
+    ```
+
+##### \[\[deprecated\]\]
+
+修饰类、变量、函数等，当程序中使用到了被其修饰的代码时，编译时产生警告，用户提示开发者该标记修饰的内容将来可能会被丢弃，尽量不要使用。
+
+```cpp
+struct [[deprecated]] A { };
+
+int main() {
+    A a;
+    return 0;
+}
+```
+
+##### 二进制字面量与整形字面量分隔符
+
+```cpp
+int a = 0b0001'0011'1010;
+double b = 3.14'1234'1234'1234;
+```
+
+##### std::make_unique
+
+C++11中有std::make_shared，却没有std::make_unique
+
+#### C++17
+
+
+
+#### C++20
+
 ### const
 
 #### 作用
@@ -61,6 +590,7 @@
 2. 修饰指针，分为指向常量的指针（pointer to const）和自身是常量的指针（常量指针，const pointer）；
 3. 修饰引用，指向常量的引用（reference to const），用于形参类型，即避免了拷贝，又避免了函数对值的修改；
 4. 修饰成员函数，说明该成员函数内不能修改成员变量。
+4. 修饰类对象，只能调用该对象的const成员函数
 
 #### const 的指针与引用
 
@@ -2418,7 +2948,8 @@ TCP 有限状态机图片
 标准格式：
 
 * `协议类型:[//服务器地址[:端口号]][/资源层级UNIX文件路径]文件名[?查询][#片段ID]`
-    
+  
+
 完整格式：
 
 * `协议类型:[//[访问资源需要的凭证信息@]服务器地址[:端口号]][/资源层级UNIX文件路径]文件名[?查询][#片段ID]`
