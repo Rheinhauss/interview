@@ -1,0 +1,98 @@
+{
+  "main": {
+    "id": "f98706e21bf8b596",
+    "type": "split",
+    "children": [
+      {
+        "id": "ff020dfd3ffd1587",
+        "type": "leaf",
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "STL/README.md",
+            "mode": "source",
+            "source": false
+          }
+        }
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "fb06f168e28a0dab",
+    "type": "split",
+    "children": [
+      {
+        "id": "347c7c613406daa6",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f69f8cd42f6b6178",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "b439e9e578019cc5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "https://github.com/huihut/interview/blob/master/",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "c9021f5a6e2234af",
+    "type": "split",
+    "children": [
+      {
+        "id": "c5c32d19bb926618",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f795d6733d742df0",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "STL/README.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "active": "ff020dfd3ffd1587",
+  "lastOpenFiles": [
+    "STL/README.md",
+    "STL/STL.md",
+    "README.md",
+    "README_en.md"
+  ]
+}

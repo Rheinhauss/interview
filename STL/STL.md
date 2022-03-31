@@ -2061,7 +2061,7 @@ mylist contains: 19 77 2 16
 map 是关联容器，按照特定顺序存储由 key value (键值) 和 mapped value (映射值) 组合形成的元素。
 
 在映射中，键值通常用于对元素进行排序和唯一标识，而映射的值存储与此键关联的内容。该类型的键和映射的值可能不同，并且在部件类型被分组在一起VALUE_TYPE，这是一种对类型结合两种：
- 
+
 ```cpp
 typedef pair<const Key, T> value_type;
 ```
