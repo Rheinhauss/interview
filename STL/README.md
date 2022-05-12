@@ -33,6 +33,13 @@ relational operators (array)|形如 `arrayA > arrayB`；依此比较数组每个
 
 vector 是表示可以改变大小的数组的序列容器。
 
+- 当不超过预留空间时，**reserve()不涉及内存的重新分配，resize()会涉及内存的重新分配**。但是如果是对空容器操作，那么二者看不出内在的区别。
+- **reserve()只修改capacity大小，不修改size大小，**
+- **resize()既修改capacity大小，也修改size大小。**
+- `resize()`可能会导致迭代器失效
+- `capacity==size`时内存重分配
+- 当我们使用push_back() , insert() , emplace()等成员方法的时候，有可能会增加容量，但是我们使用 pop_back()、erase()、clear() 等方式的时候，并不会减少实际 的内存容量。只是可以删除容器里面的内容。
+
 方法|含义
 ---|---
 vector|构造函数
@@ -59,12 +66,12 @@ front|返回对容器中第一个元素的引用
 back|返回对容器中最后一个元素的引用
 data|返回指向容器中第一个元素的指针
 assign|将新内容分配给 vector，替换其当前内容，并相应地修改其 size
-push_back|在容器的最后一个元素之后添加一个新元素
+push_back|在容器的最后一个元素之后添加一个新元素。
 pop_back|删除容器中的最后一个元素，有效地将容器 size 减少一个
 insert|通过在指定位置的元素之前插入新元素来扩展该容器，通过插入元素的数量有效地增加容器大小
 erase|从 vector 中删除单个元素（`position`）或一系列元素（`[first，last)`），这有效地减少了被去除的元素的数量，从而破坏了容器的大小
 swap|通过 x（参数）的内容交换容器的内容，x 是另一个类型相同、size 可能不同的 vector 对象
-clear|从 vector 中删除所有的元素（被销毁），留下 size 为 0 的容器
+clear|从 vector 中删除所有的元素（被销毁），留下 size 为 0 的容器，**capacity不变**
 emplace|通过在 position（参数）位置处插入新元素 args（参数）来扩展容器
 emplace_back|在 vector 的末尾插入一个新的元素，紧跟在当前的最后一个元素之后
 get_allocator|返回与vector关联的构造器对象的副本

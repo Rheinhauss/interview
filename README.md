@@ -684,6 +684,31 @@ int* const function7();     // 返回一个指向变量的常指针，使用：i
     2. 为避免对同一对象进行赋值操作；
     3. 在实现一些数据结构时，如 `list`。
 
+```cpp
+#include <iostream>
+using namespace std;
+
+class A {
+  public:
+    int a = 1234111;
+    virtual void vfunc() { cout << "vfunc" << endl; }
+    void func() { cout << "func" << endl << a << endl; }
+};
+
+int main() {
+    A* a = nullptr;
+    a->func();
+    a->vfunc();
+
+}
+
+
+// func()	输出"func" 然后 segment fault
+// vfunc()	segment fault
+```
+
+
+
 ### inline 内联函数
 
 #### 特征
@@ -2044,7 +2069,9 @@ typedef struct {
 }HashTable;
 ```
 
-![](https://gitee.com/huihut/interview/raw/master/images/HashTable.png)
+![img](https://raw.githubusercontent.com/rheinhauss/interview/master/images/HashTable.png)
+
+
 
 ### 递归
 
@@ -2162,6 +2189,182 @@ typedef struct BiTNode
 * 中序遍历
 * 后续遍历
 * 层次遍历
+
+##### 迭代（非递归）
+
+###### 前序遍历
+
+思路：
+由于“中左右”的访问顺序正好符合根结点寻找子节点的顺序，因此每次循环时弹栈，输出此弹栈结点并将其右结点和左结点按照叙述顺序依次入栈。至于为什么要右结点先入栈，是因为栈后进先出的特性。右结点先入栈，就会后输出右结点。
+初始化：
+一开始让root结点先入栈，满足循环条件
+步骤：
+
+弹栈栈顶元素，同时输出此结点
+当前结点的右结点入栈
+当前结点的左结点入栈
+重复上述过程
+结束条件：
+每次弹栈根结点后入栈子结点，栈为空时则说明遍历结束。
+
+```C++
+class Solution {
+public:
+    vector<int> preorderTraversal(TreeNode* root) {
+        vector<int> ans;
+        stack<TreeNode*> stk;
+        if(root != NULL)
+            stk.push(root);
+        while(!stk.empty())
+        {
+            TreeNode* cur = stk.top();
+            stk.pop();
+            ans.push_back(cur->val);
+            if(cur->right != NULL)
+                stk.push(cur->right);
+            if(cur->left != NULL)
+                stk.push(cur->left);
+        }
+        return ans;
+    }
+};
+```
+
+
+
+###### 中序遍历
+
+思路：
+中序遍历思路相较于前序遍历有很大的改变。前序遍历遇到根结点直接输出即可，但中序遍历“左中右”需先找到此根结点的左结点，因此事实上第一个被输出的结点会是整个二叉树的最左侧结点。依据这一特性，我们每遇到一个结点，首先寻找其最左侧的子结点，同时用栈记录寻找经过的路径结点，这些是输出最左侧结点之后的返回路径。之后每次向上层父结点返回，弹栈输出上层父结点的同时判断此结点是否含有右子结点，如果存在则此右结点入栈并到达新的一轮循环，对此右结点也进行上述操作。
+初始化：
+curr定义为将要入栈的结点，初始化为root
+top定义为栈顶的弹栈结点
+步骤：
+
+寻找当前结点的最左侧结点直到curr为空（此时栈顶结点即为最左侧结点）
+弹栈栈顶结点top并输出
+判断top是否具有右结点，如果存在则令curr指向右结点，并在下一轮循环入栈
+重复上述过程
+结束条件：
+这里可以看到结束条件有两个：栈为空，curr为空。这是因为中序遍历优中后右的特性，会有一个时刻栈为空但右结点并未被遍历，因此只有在curr也为空证明右结点不存在的情况下，才能结束遍历。
+
+```C++
+class Solution {
+public:
+    vector<int> inorderTraversal(TreeNode* root) {
+        vector<int> ans;
+        stack<TreeNode*> stk;
+        TreeNode* curr = root;
+        while(!stk.empty() || curr != NULL)
+        {
+            // 找到节点的最左侧节点，同时记录路径入栈
+            while(curr != NULL)
+            {
+                stk.push(curr);
+                curr = curr->left;
+            }
+            // top定义是此刻的弹栈元素
+            TreeNode* top = stk.top();
+            ans.push_back(top->val);
+            stk.pop();
+            // 处理过最左侧结点后，判断其是否存在右子树
+            if(top->right != NULL)
+                curr = top->right;
+        }
+        return ans;
+    }
+};
+```
+
+
+
+###### 后序遍历
+
+法一
+思路：
+后序遍历思路类似中序遍历，都是从“左”开始，只不过情况的处理更加复杂。中序遍历在寻找到最左侧结点之后就可以直接弹栈，但后序遍历不可以，因为其要先输出右子结点之后才能输出根结点。而能输出根结点的条件仅在左右子树均已处理完毕或者不存在。因此依据这些特点，我们设定curr作为当前退出栈的结点，top为待处理的根结点，通过判断top与curr的关系来断定是否已经完成子结点的遍历进入到返回上层父结点的阶段。
+初始化：
+curr定义为当前退出栈的结点，初始化为head（这里有一个要点，不能把curr初始化为NULL，否则在第一次弹栈之前 != NULL 与 != curr 是等价的，因此初始化为head仅是为了不让其为空，并不代表head要出栈）
+top定义为栈顶待处理的根节点
+步骤：
+
+判断top的左结点是否能入栈（为空或者左右子树被处理过则说明此结点已被遍历过，不能入栈）
+判断top的右结点是否能入栈（为空或者右子树被处理过则不能入栈）
+如果上述两条件都不符合，说明top结点不存在左右子树或者左右子树均被遍历过，因此直接弹栈并输出，同时curr指向top，存储当前退出栈的结点信息。
+重复上述过程
+结束条件：
+这里根结点必然是最后弹栈并输出的，因此结束条件就是栈为空即可。
+
+```C++
+class Solution {
+public:
+    vector<int> postorderTraversal(TreeNode* root) {
+        vector<int> ans;
+        stack<TreeNode*> stk;
+        if(root != NULL)
+            stk.push(root);
+        // curr存储当前退出栈的结点
+        TreeNode* curr = root;
+        while(!stk.empty())
+        {
+            TreeNode* top = stk.top();
+            if(top->left != NULL && top->left != curr && top->right != curr)
+                stk.push(top->left);
+            else if(top->right != NULL && top->right != curr)
+                stk.push(top->right);
+            // 当左右子树都处理过或者不存在情况下，说明此结点可以弹栈
+            else
+            {
+                ans.push_back(top->val);
+                stk.pop();
+                curr = top;
+            }
+        }
+        return ans;
+    }
+};
+```
+
+
+法二（巧妙做法）
+
+前序遍历的过程是中左右。
+将其转化成中右左。也就是压栈的过程中优先压入左子树，再压入右子树。
+在弹栈的同时将此弹栈结点压入另一个栈，完成逆序。
+对新栈中的元素直接顺序弹栈并输出。
+C++
+
+```cpp
+class Solution {
+    public: 
+    vector<int> postOrderIteration(TreeNode* root) {
+        vector<int> ans;
+		if (root == NULL)
+			return ans;
+		stack<TreeNode*> stack1;
+		stack<TreeNode*> stack2;
+		stack1.push(root);
+        // 栈一顺序存储
+		while (!stack1.empty()) 
+        {
+			TreeNode* node = stack1.top();
+            stack1.pop();
+			stack2.push(node);
+			if (node->left != NULL)
+				stack1.push(node->left);
+			if (node->right != NULL)
+				stack1.push(node->right);
+		}
+        // 栈二直接输出
+		while (!stack2.empty())
+        {
+            ans.push_back(stack2.top()->val);
+            stack2.pop();
+        }
+	}
+```
+
+
 
 #### 分类
 
@@ -2294,7 +2497,7 @@ B 树、B+ 树图片
 [冒泡排序](Algorithm/BubbleSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|稳定
 [选择排序](Algorithm/SelectionSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|数组不稳定、链表稳定
 [插入排序](Algorithm/InsertSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|稳定
-[快速排序](Algorithm/QuickSort.h) | O(n*log<sub>2</sub>n) |  O(n<sup>2</sup>) | O(log<sub>2</sub>n) | 不稳定
+[快速排序](Algorithm/QuickSort.h) | O(n*log<sub>2</sub>n) |  O(n<sup>2</sup>) | O(log<sub>2</sub>n) | 不稳定（交换pivot） 
 [堆排序](Algorithm/HeapSort.cpp) | O(n*log<sub>2</sub>n)|O(n*log<sub>2</sub>n)|O(1)|不稳定
 [归并排序](Algorithm/MergeSort.h) | O(n*log<sub>2</sub>n) | O(n*log<sub>2</sub>n)|O(n)|稳定
 [希尔排序](Algorithm/ShellSort.h) | O(n*log<sup>2</sup>n)|O(n<sup>2</sup>)|O(1)|不稳定
@@ -2432,6 +2635,37 @@ B树/B+树 |O(log<sub>2</sub>n) |   |
 
 > 进程之间的通信方式以及优缺点来源于：[进程线程面试题总结](http://blog.csdn.net/wujiafei_njgcxy/article/details/77098977)
 
+```cpp
+struct RWLock {
+    void rlock() {
+        for (;;) {
+            while (writer_.load());
+
+            readers_.fetch_add(1);
+
+            if (!writer_.load()) break;
+
+            readers_.fetch_sub(1);
+        }
+    }
+    void runlock() {
+        readers_.fetch_sub(1);
+    }
+    void wlock() {
+        while (writer_.exchange(true));
+        while (readers_.load() > 0);
+    }
+    void wunlock() {
+        writer_.store(false);
+    }
+    std::atomic<bool> writer_ = {false};
+    std::atomic<int> readers_ = {0};
+};
+
+```
+
+
+
 #### 进程之间私有和共享的资源
 
 * 私有：地址空间、堆、全局变量、栈、寄存器
@@ -2502,10 +2736,10 @@ B树/B+树 |O(log<sub>2</sub>n) |   |
 
 #### 产生条件
 
-* 互斥
-* 请求和保持
-* 不剥夺
-* 环路
+* 互斥使用的资源
+* 占有且申请：一个进程因请求资源而阻塞时，对已获得的资源保持不放。
+* 不剥夺：进程已获得的资源，在末使用完之前，不能强行剥夺。
+* 循环等待
 
 #### 预防
 
@@ -2601,6 +2835,41 @@ int main()
 * 先进先出置换算法（FIFO）
 * 最近最久未使用（LRU）算法
 * 时钟（Clock）置换算法
+
+```cpp
+class LRUCache {
+public:
+    LRUCache(int capacity) : cap(capacity) {
+    }
+
+    int get(int key) {
+        if (map.find(key) == map.end()) return -1;
+        auto key_value = *map[key];
+        cache.erase(map[key]);
+        cache.push_front(key_value);
+        map[key] = cache.begin();
+        return key_value.second;
+    }
+
+    void put(int key, int value) {
+        if (map.find(key) == map.end()) {
+            if (cache.size() == cap) {
+                map.erase(cache.back().first);
+                cache.pop_back();
+            }
+        }
+        else {
+            cache.erase(map[key]);
+        }
+        cache.push_front({key, value});
+        map[key] = cache.begin();
+    }
+private:
+    int cap;
+    list<pair<int, int>> cache;
+    unordered_map<int, list<pair<int, int>>::iterator> map;
+};
+```
 
 <a id="computer-network"></a>
 
@@ -2759,11 +3028,20 @@ ICMP 报文格式：
 TCP 如何保证可靠传输：
 * 确认和超时重传
 * 数据合理分片和排序
-* 流量控制
+* 流量控制：**流量控制**是为了**控制**发送方发送速率，保证接收方来得及接收。 接收方发送的确认报文中的窗口字段可以用来**控制**发送方窗口大小，从而影响发送方的发送速率。 将窗口字段设置为0，则发送方不能发送数据。
 * 拥塞控制
 * 数据校验
 
-TCP 报文结构
+##### 拥塞控制
+
+- **慢开始**，拥塞窗口指数增长，直到慢开始门限值
+- **拥塞避免**，拥塞窗口线性增长，发生超时重传则回到**慢开始**重新开始，设置门限值为此时拥塞窗口的一半
+- **快重传**：使发送方尽快进行重传，而不是等超时重传计时器超时；接收方不要等待自己发送数据时才进行销带确认，而是要立即发送确认，收到了失序的报文段要立即发出对已收到的报文段的重复确认；发送方一旦收到3个连续的重复确认，就将相应的报文段立即重传，而不是等该报文段的超时重传计时器超时再重传。
+- **快恢复**：收到3个连续重复确认时，门限值与拥塞窗口减小，进入拥塞避免
+
+
+
+##### TCP 报文结构
 
 ![TCP 报文](https://gitee.com/huihut/interview/raw/master/images/TCP报文.png)
 
@@ -2861,7 +3139,7 @@ TCP的拥塞控制图
 
 ##### TCP 三次握手建立连接
 
-![UDP 报文](https://gitee.com/huihut/interview/raw/master/images/TCP三次握手建立连接.png)
+![img](README/TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%BB%BA%E7%AB%8B%E8%BF%9E%E6%8E%A5.png)
 
 【TCP 建立连接全过程解释】
 
@@ -3186,21 +3464,32 @@ ssize_t write(int fd, const void *buf, size_t count);
 ### 数据库恢复
 
 * 事务：是用户定义的一个数据库操作序列，这些操作要么全做，要么全不做，是一个不可分割的工作单位。
-* 事物的 ACID 特性：原子性、一致性、隔离性、持续性。
+* 事物的 ACID 特性：
+  * **原子性**：一系列操作为一个整体，要么整个执行，要么整个回滚
+  * **一致性**：事务要保证数据库整体数据的完整性一致性，成功则整体修改，失败则整体回滚至原先状态。例：若事务提交成功则A账户减金额，B账户加对应金额，总体金额不变；如果事务出错则整体回滚，无论到了上面的哪个步骤A和B的数据都会回到最事务开启前的状态保证数据的始终一致;
+  * **隔离性**：两个事务的执行是独立隔离的，之间不会影响：多个事务操作一个对象用**串行等待**
+  * **持续性**：事务成功提交后，只要修改的数据都会进行持久化，不会因为异常、宕机而造成数据错误或丢失。
+
 * 恢复的实现技术：建立冗余数据 -> 利用冗余数据实施数据库恢复。
 * 建立冗余数据常用技术：数据转储（动态海量转储、动态增量转储、静态海量转储、静态增量转储）、登记日志文件。
 
 ### 并发控制
 
 * 事务是并发控制的基本单位。
-* 并发操作带来的数据不一致性包括：丢失修改、不可重复读、读 “脏” 数据。
+* 并发操作带来的数据不一致性包括：
+    * **丢失修改**：同时写入，后者覆盖前者
+    * **不可重复读**：**T1(R)**, T2(W), **T1(R)**，T1无法再现前一次读取结果。
+    * **读脏数据**：T1(W), T2(R), T1(ROLLBACK)，T2读到的和数据库内容不一致，是错的
+
 * 并发控制主要技术：封锁、时间戳、乐观控制法、多版本并发控制等。
 * 基本封锁类型：排他锁（X 锁 / 写锁）、共享锁（S 锁 / 读锁）。
 * 活锁死锁：
     * 活锁：事务永远处于等待状态，可通过先来先服务的策略避免。
     * 死锁：事务永远不能结束
-        * 预防：一次封锁法、顺序封锁法；
-        * 诊断：超时法、等待图法；
+        * 预防：
+          * 一次封锁法：每个事务**一次将所有要使用的数据全部加锁**
+          * 顺序封锁法
+        * 诊断：超时法、等待图法（环）；
         * 解除：撤销处理死锁代价最小的事务，并释放此事务的所有的锁，使其他事务得以继续运行下去。
 * 可串行化调度：多个事务的并发执行是正确的，当且仅当其结果与按某一次序串行地执行这些事务时的结果相同。可串行性时并发事务正确调度的准则。
 
@@ -3281,6 +3570,12 @@ ssize_t write(int fd, const void *buf, size_t count);
 * 将指针初始化为 NULL，之后没有给它一个合理的值就开始使用指针
 * 没用初始化栈中的指针，指针的值一般会是随机数，之后就直接开始使用指针
 
+
+
+* 试图访问不存在的内存空间（进程内存空间以外）
+* 试图访问没有权限的内存空间（例如：访问操作系统内核的内存地址）
+* 试图写入至只读内存段（例如：代码段）
+
 ### 编译链接
 
 #### 各平台文件格式
@@ -3293,10 +3588,21 @@ Mac|Mach-O|o|dylib、tbd、framework|a、framework
 
 #### 编译链接过程
 
-1. 预编译（预编译器处理如 `#include`、`#define` 等预编译指令，生成 `.i` 或 `.ii` 文件）
-2. 编译（编译器进行词法分析、语法分析、语义分析、中间代码生成、目标代码生成、优化，生成 `.s` 文件）
-3. 汇编（汇编器把汇编码翻译成机器码，生成 `.o` 文件）
-4. 链接（连接器进行地址和空间分配、符号决议、重定位，生成 `.out` 文件）
+1. **预编译**（预编译器处理如 `#include`、`#define` 等预编译指令，生成 `.i` 或 `.ii` 文件）
+
+   1. **处理注释**：删除所有注释，使用空格取代注释内容
+
+   2. **处理宏定义**：将 define 的值替换为宏定义对应的值
+
+   3. **处理条件编译**指令：处理 #if, #else, #elif, #endif 等条件编译指令
+
+   4. **处理#include**：将把#include 的代码复制到源代码中
+
+2. **编译**（编译器进行词法分析、语法分析、语义分析、中间代码生成、目标代码生成、优化，生成 `.s` **汇编码**文件）
+
+3. **汇编**（汇编器把汇编码翻译成**机器码**，生成 `.o` 文件）
+
+4. **链接**（连接器进行地址和空间分配、符号决议、重定位，生成 `.out` 文件）
 
 > 现在版本 GCC 把预编译和编译合成一步，预编译编译程序 cc1、汇编器 as、连接器 ld
 
